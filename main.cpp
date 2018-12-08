@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
 {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
-    std::string program = "__kernel void normalize() {}";
+    std::string zdrojovy_kod = "__kernel void normalize() {}";
 
     cl_int error = 0;
     cl_context context;
@@ -62,7 +62,7 @@ int main(int argc, char const *argv[])
     }
 
     /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
-    program = clCreateProgramWithSource(context,1,program.c_str(),NULL,&error);
+    program = clCreateProgramWithSource(context,1,zdrojovy_kod.c_str(),NULL,&error);
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
@@ -107,7 +107,7 @@ int main(int argc, char const *argv[])
     /* uvolneni pameti jadra */
     cleanup_kernel:  clReleaseKernel(kernel);
     /* uvolneni pameti programu */
-    //cleanup_program: clReleaseProgram(program.c_str());
+    cleanup_program: clReleaseProgram(zdrojovy_kod.c_str());
     /* uvolneni pameti 1. vstupni matice */
     cleanup_matrix: clReleaseMemObject(matrix);
     /* uvolneni pameti fronty prikazu */
