@@ -56,7 +56,7 @@ int main() {
 
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
-        cl::Program::Sources source(1,std::make_pair(program.c_str(), program.length()));
+        cl::Program::Sources source(1,std::make_pair(program.c_str(), program.length() + 1));
         std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
         cl::Program program_ = cl::Program(context, source);
         program_.build(devices);
