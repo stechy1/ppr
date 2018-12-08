@@ -29,14 +29,19 @@ int main() {
             return -1;
         }
 
+        std::cout << "Nalezl jsme nejakou platformu." << std::endl;
+
         cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0};
         cl::Context context(CL_DEVICE_TYPE_GPU, properties);
+        std::cout << "Mam vytvoreny kontext" << std::endl;
 
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
         cl::Program::Sources source(1,std::make_pair(helloStr.c_str(), helloStr.length()));
+        std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
         cl::Program program_ = cl::Program(context, source);
         program_.build(devices);
+        std::cout << "Uspesne jsem sestavil program." << std::endl;
 
         cl::Kernel kernel(program_, "hello", &err);
 
