@@ -66,13 +66,13 @@ int main(int argc, char const *argv[])
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
-        goto cleanup_program;
+        goto cleanup_matrix;
     }
     error = clBuildProgram(program,0,NULL,NULL,NULL,NULL);
     /* jestlize nebylo mozne program sestavit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo zkompilovat" << std::endl;
-        goto cleanup_program;
+        goto cleanup_matrix;
     }
     kernel = clCreateKernel(program,"normalize",&error);
     /* v pripade, ze se vytvoreni kernelu nepovedlo */
@@ -107,7 +107,7 @@ int main(int argc, char const *argv[])
     /* uvolneni pameti jadra */
     cleanup_kernel:  clReleaseKernel(kernel);
     /* uvolneni pameti programu */
-    cleanup_program: clReleaseProgram(program.c_str());
+    //cleanup_program: clReleaseProgram(program.c_str());
     /* uvolneni pameti 1. vstupni matice */
     cleanup_matrix: clReleaseMemObject(matrix);
     /* uvolneni pameti fronty prikazu */
