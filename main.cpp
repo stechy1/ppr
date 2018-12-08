@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <random>
 
-const char* program = "__kernel void normalize() {}";
+const std::string program = "__kernel void normalize() {}";
 
 int main(int argc, char const *argv[])
 {
@@ -62,7 +62,7 @@ int main(int argc, char const *argv[])
     }
 
     /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
-    program = clCreateProgramWithSource(context,1,&program,NULL,&error);
+    program = clCreateProgramWithSource(context,1,&program.c_str(),NULL,&error);
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
