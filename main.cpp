@@ -1,183 +1,116 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#define __CL_ENABLE_EXCEPTIONS
 
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.hpp>
 #else
-#include <CL/cl.h>
+
+#include <cl.hpp>
+
 #endif
 
-#define MEM_SIZE 128
-#define MAX_SOURCE_SIZE 0x100000
-#define DEVICE_GROUP_SIZE 64
+#include <cstdio>
+#include <cstdlib>
+#include <random>
 
-/*
- * error_handler
- * Handles OpenCL errors codes. Exits execution if bad stuff happens.
- */
-void error_handler(char err[], int code) {
-    if(code != CL_SUCCESS) {
-        printf("%s, Error code:%d\n", err, code);
-        exit(EXIT_FAILURE);
-    }
-}
+const std::string program = "__kernel void normalize() {}";
 
-/* resize_array
- * Resizes dynamically allocated array of integers.
- */
-void resize_array(int** orig, int newSize) {
-    printf("Resizing to: %lu\n", sizeof(*orig) * newSize);
-    int *temp = realloc(*orig, sizeof(**orig) * newSize);
+int main(int argc, char const *argv[])
+{
+    int pocet_prvku = 1024;
+    double* matice = new double[pocet_prvku];
 
-    if(temp == NULL) {
-        puts("resize failed");
-        exit(EXIT_FAILURE);
-    } else {
-        *orig = temp;
-    }
-}
-
-/* main
- * Takes one parameter, integer value of n. Creates array of consequtive integers [0,n).
- * Pads array with with 0s so that size becomes a multiple of DEVICE_GROUP_SIZE.
- * Produces sum for array.
- */
-int main(int argc, char * argv[]) {
-    int ret;
-    int inputSize = atoi(argv[1]);
-    printf("Specified input array will have %d items\n", inputSize);
-    printf("The program will sum the integers in the range [0, %d)\n", inputSize);
-    printf("==============\n");
-
-    /* create input data */
-    int* input = malloc(sizeof(*input) * inputSize);
-    for(int i = 0; i < inputSize; i++) {
-        input[i] = i;
-    }
-
-    int sizeDiff = inputSize - DEVICE_GROUP_SIZE;
-    int multiplier = 1;
-    if(sizeDiff < 0) {
-        resize_array(&input, DEVICE_GROUP_SIZE);
-    }
-    else if(sizeDiff > 0) {
-        multiplier = ((inputSize % DEVICE_GROUP_SIZE) == 0) ? inputSize / DEVICE_GROUP_SIZE : (inputSize / DEVICE_GROUP_SIZE) + 1;
-        resize_array(&input, multiplier * DEVICE_GROUP_SIZE);
-    }
-
-    for(int i = 0; i < abs(sizeDiff); i++) {
-        input[inputSize + i] = 0;
-    }
-
-    inputSize = multiplier * DEVICE_GROUP_SIZE;
-
-    /* define platform */
-    cl_platform_id platformID;
-    ret = clGetPlatformIDs(1, &platformID, NULL);
-    error_handler("Get platform error", ret);   
-
-    /* define device */
-    cl_device_id deviceID;
-    ret = clGetDeviceIDs(platformID, CL_DEVICE_TYPE_GPU, 1, &deviceID, NULL);
-    error_handler("Get deviceID error", ret);
-
-    cl_char vendorName[1024] = {0};
-    cl_char deviceName[1024] = {0};
-    ret = clGetDeviceInfo(deviceID, CL_DEVICE_VENDOR, sizeof(vendorName), vendorName, NULL);
-    ret = clGetDeviceInfo(deviceID, CL_DEVICE_NAME, sizeof(deviceName), deviceName, NULL);
-    printf("Connecting to %s %s...\n", vendorName, deviceName);
-
-    /* define context */
+    cl_int error = 0;
     cl_context context;
-    context = clCreateContext(NULL, 1, &deviceID, NULL, NULL, &ret);
-    error_handler("define context error", ret);
+    cl_command_queue queue;
+    cl_device_id device;
+    cl_mem matrix;
+    cl_program program;
+    cl_kernel kernel;
+    size_t matrix_size = sizeof(double) * pocet_prvku;
 
-    /* define command queue */
-    cl_command_queue commandQueue;
-    commandQueue = clCreateCommandQueue(context, deviceID, 0, &ret);
-    error_handler("Create command queue error", ret);
-
-    /* create memory objects */
-    cl_mem inputMemObj;
-    inputMemObj = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int)*inputSize, NULL, &ret);
-    error_handler("Create input buffer failed", ret);
-    ret = clEnqueueWriteBuffer(commandQueue, inputMemObj, CL_TRUE, 0, sizeof(int)*inputSize, (const void*)input, 0, NULL, NULL);
-    error_handler("Write to input buffer failed", ret);
-
-    // output need only be an array of inputSize / DEVICE_GROUP_SIZE long
-    cl_mem outputMemObj;
-    outputMemObj = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int)*multiplier, NULL, &ret);
-    error_handler("Create output buffer failed", ret);
-
-    /* read kernel file from source */
-    char fileName[] = "../sum.cl";
-    char *sourceStr;    
-    size_t sourceSize;
-
-    FILE *fp = fopen(fileName, "r");
-    if(!fp) {
-        puts("Failed to load kernel file");
-        exit(EXIT_FAILURE);
+    /* ziskani ID GPU zarizeni */
+    error = clGetDeviceIDs(NULL,CL_DEVICE_TYPE_GPU,1,&device,NULL);
+    /* pokud ID nebylo nalezeno nebo nastala jina chyba */
+    if(error != CL_SUCCESS){
+        std::cout << "Nenalezeno ID zarizeni" << std::endl;
+        return;
     }
-    sourceStr = (char*)malloc(MAX_SOURCE_SIZE);
-    sourceSize = fread(sourceStr, 1, MAX_SOURCE_SIZE, fp);
-    fclose(fp);
-    
-    /* create program object */
-    cl_program program = clCreateProgramWithSource(context, 1, (const char**)&sourceStr, (const size_t*)&sourceSize, &ret); 
-    error_handler("create program failure", ret);
-    ret = clBuildProgram(program, 1, &deviceID, NULL, NULL, NULL);
-    if(ret != CL_SUCCESS) {
-        puts("Build program error");
-        size_t len;
-        char buildLog[2048];
-        clGetProgramBuildInfo(program, deviceID, CL_PROGRAM_BUILD_LOG, sizeof(buildLog), buildLog, &len);
-        printf("%s\n", buildLog);
+    /* vytvoreni OpenCL kontextu */
+    context = clCreateContext(0,1,&device,NULL,NULL,&error);
+    /* pokud se vytvoreni kontextu nezdarilo */
+    if(error != CL_SUCCESS){
+        std::cout << "KOntext nevytvoren" << std::endl;
+        goto cleanup_context;
+    }
+    /* vytvoreni fronty prikazu pro dane zarizeni */
+    queue = clCreateCommandQueueWithProperties(context,device,0,&error);
+    /* pokud se vytvoreni fronty nezdarilo */
+    if(error != CL_SUCCESS){
+        std::cout << "Fronta prikazu nebyla vytvorena" << std::endl;
+        goto cleanup_queue;
     }
 
-    /* create kernel */
-    cl_kernel kernel = clCreateKernel(program, "sum", &ret);
-    error_handler("Create kernel failure", ret);
-
-    /* set kernel arguments */
-    ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputMemObj);
-    error_handler("Set arg 1 failure", ret);
-    ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&outputMemObj);
-    error_handler("Set arg 2 failure", ret);
-    ret = clSetKernelArg(kernel, 2, sizeof(int), (void *)&inputSize);
-    error_handler("Set arg 3 failure", ret);
-    ret = clSetKernelArg(kernel, 3, sizeof(int) * DEVICE_GROUP_SIZE, NULL);
-    error_handler("Set arg 4 failure", ret);
-
-    /* enqueue and execute */
-    const size_t globalWorkSize = inputSize;
-    const size_t localWorkSize = DEVICE_GROUP_SIZE;
-    ret = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &globalWorkSize, &localWorkSize, 0, NULL, NULL);
-    error_handler("Enqueue/execute failure", ret);
-    
-    /* read results from output buffer */
-    int * results = (int*) malloc(sizeof(int)*multiplier);
-    ret = clEnqueueReadBuffer(commandQueue, outputMemObj, CL_TRUE, 0, sizeof(int)*multiplier, results, 0, NULL, NULL);
-    error_handler("Read output buffer fail", ret);
-
-    int sum = 0;
-    for(int i = 0; i < multiplier; i++) {
-        sum += results[i];
+    matrix = clCreateBuffer(context,CL_MEM_READ_ONLY,matrix_size,NULL,&error);
+    /* predani pointeru 1. matice do OpenCL bufferu */
+    error |= clEnqueueWriteBuffer(queue,matrix,CL_TRUE,0,matrix_size,matice,0,NULL,NULL);
+    /* pokud se vytvoreni bufferu nepovedlo */
+    if(error != CL_SUCCESS){
+        std::cout << "Nepodarilo se vytvorit buffer pro matici" << std::endl;
+        goto cleanup_matrix;
     }
-    printf("==============\n");
-    printf("The sum of the array is: %d\n", sum);
-        
-    /* release */
-    ret = clReleaseKernel(kernel);
-    ret = clReleaseProgram(program);
-    ret = clReleaseMemObject(inputMemObj);
-    ret = clReleaseMemObject(outputMemObj);
-    ret = clReleaseCommandQueue(commandQueue);
-    ret = clReleaseContext(context);    
 
-    free(input);
-    free(results);
+    /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
+    program = clCreateProgramWithSource(context,1,program.c_str(),NULL,&error);
+    /* jestlize nebylo mozne program vytvorit */
+    if(error != CL_SUCCESS){
+        std::cout << "Program se nepodarilo vytvorit" << std::endl;
+        goto cleanup_program;
+    }
+    error = clBuildProgram(program,0,NULL,NULL,NULL,NULL);
+    /* jestlize nebylo mozne program sestavit */
+    if(error != CL_SUCCESS){
+        std::cout << "Program se nepodarilo zkompilovat" << std::endl;
+        goto cleanup_program;
+    }
+    kernel = clCreateKernel(program,"normalize",&error);
+    /* v pripade, ze se vytvoreni kernelu nepovedlo */
+    if(error != CL_SUCCESS){
+        std::cout << "Kernel se nepodarilo vytvorit" << std::endl;
+        goto cleanup_kernel;
+    }
 
-    exit(EXIT_SUCCESS);
+    error  = clSetKernelArg(kernel,0,sizeof(cl_mem),(void*)&matrix);
+    if(error != CL_SUCCESS){
+        std::cout << "Parametry nebyly predany" << std::endl;
+        goto cleanup_kernel;
+    }
+
+    /* spusteni vypoctu na GPU */
+    error = clEnqueueNDRangeKernel(queue,kernel,1,NULL,&delka,NULL,0,NULL,NULL);
+    /* pokud se spusteni neprovedlo */
+    if(error != CL_SUCCESS){
+        std::cout << "Nepodarilo se spustit vypocet na GPU" << std::endl;
+        goto cleanup_kernel;
+    }
+    /* cekani na vysledek operace */
+    clFinish(queue);
+    /* precteni vysledku z GPU vypoctu */
+    error = clEnqueueReadBuffer(queue,matrix3,CL_TRUE,0,bytes,res,0,NULL,NULL);
+    /* pokud nebylo mozne vystup precist */
+    if(error != CL_SUCCESS){
+        std::cout << "Vystup se nezdarilo precist" << std::endl;
+        goto cleanup_kernel;
+    }
+
+    /* uvolneni pameti jadra */
+    cleanup_kernel:  clReleaseKernel(kernel);
+    /* uvolneni pameti programu */
+    cleanup_program: clReleaseProgram(program);
+    /* uvolneni pameti 1. vstupni matice */
+    cleanup_matrix: clReleaseMemObject(matrix);
+    /* uvolneni pameti fronty prikazu */
+    cleanup_queue:   clReleaseCommandQueue(queue);
+    /* uvolneni pameti OpenCL kontextu */
+    cleanup_context: clReleaseContext(context);
+    delete[] matice;
 }
