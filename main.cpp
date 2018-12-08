@@ -14,12 +14,12 @@
 #include <cstdlib>
 #include <random>
 
-const std::string program = "__kernel void normalize() {}";
 
 int main(int argc, char const *argv[])
 {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
+    std::string program = "__kernel void normalize() {}";
 
     cl_int error = 0;
     cl_context context;
