@@ -33,7 +33,17 @@ int main() {
         matrix[i] = dist6(rng);
     }
 
-    std::ifstream program("program.cl", std::ifstream::in);
+    //std::ifstream program("program.cl", std::ifstream::in);
+
+    std::ifstream file("program.cl", std::ios::binary | std::ios::ate);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(size);
+    if (!file.read(buffer.data(), size)) {
+        std::cout << "Soubor se napodarilo nacist, koncim." << std::endl;
+        return -1;
+    }
 
     try {
 
