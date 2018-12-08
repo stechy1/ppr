@@ -1,5 +1,5 @@
 __kernel void normalize(){
-		__global const double* mat,
+		//__global const double* mat,
 		// __global double* max,
 		// __global double* min,
 		// const int num) {

@@ -62,7 +62,7 @@ int main() {
         std::cout << "Uspesne jsem sestavil program." << std::endl;
 
         cl::Kernel kernel(program_, "normalize", &err);
-        kernel.setArg(0, sizeof(double) * matrix_size, matrix);
+        //kernel.setArg(0, sizeof(double) * matrix_size, matrix);
         //kernel.setArg(1, sizeof(double), &max);
         //kernel.setArg(2, sizeof(double), &min);
 
