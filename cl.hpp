@@ -5038,11 +5038,6 @@ public:
                 "",
                 NULL,
                 NULL);
-            if (error) {
-                char compiler_log[4096];
-                clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
-                printf("OpenCL compiler failed:\n%s", compiler_log);
-            }
 
             detail::errHandler(error, __BUILD_PROGRAM_ERR);
         }
@@ -5077,11 +5072,6 @@ public:
                 "",
                 NULL,
                 NULL);
-            if (error) {
-                char compiler_log[4096];
-                clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
-                printf("OpenCL compiler failed:\n%s", compiler_log);
-            }
 
             detail::errHandler(error, __BUILD_PROGRAM_ERR);
         }
@@ -5109,12 +5099,6 @@ public:
 
         object_ = ::clCreateProgramWithSource(
             context(), (cl_uint)n, strings, lengths, &error);
-
-        if (error) {
-            char compiler_log[4096];
-            clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
-            printf("OpenCL compiler failed:\n%s", compiler_log);
-        }
 
         detail::errHandler(error, __CREATE_PROGRAM_WITH_SOURCE_ERR);
         if (err != NULL) {
