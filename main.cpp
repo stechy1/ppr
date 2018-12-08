@@ -63,8 +63,8 @@ int main() {
 
         cl::Kernel kernel(program_, "normalize", &err);
         kernel.setArg(0, sizeof(double) * matrix_size, matrix);
-        kernel.setArg(1, sizeof(double), &max);
-        kernel.setArg(2, sizeof(double), &min);
+        //kernel.setArg(1, sizeof(double), &max);
+        //kernel.setArg(2, sizeof(double), &min);
 
 
         cl::Event event;
