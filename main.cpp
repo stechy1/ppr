@@ -36,7 +36,8 @@ int main() {
     }
 
     std::ifstream file("../program.cl", std::ifstream::in);
-    std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    //std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string program = "__kernel void normalize() {}";
     std::cout << program << std::endl;
 
     try {
