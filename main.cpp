@@ -36,14 +36,7 @@ int main() {
     //std::ifstream program("program.cl", std::ifstream::in);
 
     std::ifstream file("program.cl", std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<char> buffer(size);
-    if (!file.read(buffer.data(), size)) {
-        std::cout << "Soubor se napodarilo nacist, koncim." << std::endl;
-        return -1;
-    }
+    std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
     try {
 
@@ -59,7 +52,7 @@ int main() {
 
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
-        cl::Program::Sources source(1,std::make_pair(helloStr.c_str(), helloStr.length()));
+        cl::Program::Sources source(1,std::make_pair(program.c_str(), program.length()));
         cl::Program program_ = cl::Program(context, source);
         program_.build(devices);
 
