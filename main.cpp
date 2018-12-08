@@ -8,6 +8,7 @@
 
 #endif
 
+#include <stdio>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -16,7 +17,7 @@ const std::string program = "__kernel void normalize() {}";
 
 int main(int argc, char const *argv[])
 {
-    int pocet_prvku = 1024;
+    size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
 
     cl_int error = 0;
@@ -86,7 +87,7 @@ int main(int argc, char const *argv[])
     }
 
     /* spusteni vypoctu na GPU */
-    error = clEnqueueNDRangeKernel(queue,kernel,1,NULL,&delka,NULL,0,NULL,NULL);
+    error = clEnqueueNDRangeKernel(queue,kernel,1,NULL,&pocet_prvku,NULL,0,NULL,NULL);
     /* pokud se spusteni neprovedlo */
     if(error != CL_SUCCESS){
         std::cout << "Nepodarilo se spustit vypocet na GPU" << std::endl;
