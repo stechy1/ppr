@@ -1,96 +1,82 @@
-#define __CL_ENABLE_EXCEPTIONS
-
-#if defined(__APPLE__) || defined(__MACOSX)
-#include <OpenCL/cl.hpp>
-#else
-
-#include <cl.hpp>
-
-#endif
-
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <random>
-#include <fstream>
-
-//std::string helloStr = "__kernel void "
-//                      "hello(void) "
-//                      "{ "
-//                      "  "
-//                      "} ";
+#include <stdio.h>
+#include <string.h>
+#include <CL/cl.h>
 
 int main() {
-    cl_int err = CL_SUCCESS;
-    const size_t matrix_size = 1024;
-    auto* matrix = new double[matrix_size];
-    double min = 0.0;
-    double max = 0.0;
-
-    std::mt19937 rng;
-    rng.seed(std::random_device()());
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(1,matrix_size);
-
-    for (int i = 0; i < matrix_size; ++i) {
-        matrix[i] = dist6(rng);
-    }
-
-    std::ifstream file("../program.cl", std::ifstream::in);
-    //std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    std::string program = "__kernel void normalize() {}";
-    std::cout << program << std::endl;
-
-    try {
-
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-        if (platforms.empty()) {
-            std::cout << "Platform size 0\n";
-            return -1;
+    // Find the first GPU device
+    cl_device_id device = 0;
+    
+    cl_uint platform_count = 0;
+    clGetPlatformIDs(0, NULL, &platform_count);
+    cl_platform_id platform_ids[platform_count];
+    clGetPlatformIDs(platform_count, platform_ids, &platform_count);
+    
+    size_t i;
+    for(i = 0; i < platform_count; i++) {
+        cl_platform_id platform_id = platform_ids[i];
+        
+        cl_uint device_count = 0;
+        clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 0, NULL, &device_count);
+        cl_device_id device_ids[device_count];
+        clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, device_count, device_ids, &device_count);
+        
+        if (device_count > 0) {
+            device = device_ids[0];
+            break;
         }
-        std::cout << "Nalezl jsme nejakou platformu." << std::endl;
-
-        cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0};
-        cl::Context context(CL_DEVICE_TYPE_GPU, properties);
-        std::cout << "Mam vytvoreny kontext" << std::endl;
-
-        std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-
-        cl::Program::Sources source(1,std::make_pair(program.c_str(), program.length() + 1));
-        std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
-        cl::Program program_ = cl::Program(context, source);
-        program_.build(devices);
-        std::cout << "Uspesne jsem sestavil program." << std::endl;
-
-        cl::Kernel kernel(program_, "normalize", &err);
-        ///kernel.setArg(0, sizeof(double) * matrix_size, matrix);
-        //kernel.setArg(1, sizeof(double), &max);
-        //kernel.setArg(2, sizeof(double), &min);
-
-
-        cl::Event event;
-        cl::CommandQueue queue(context, devices[0], 0, &err);
-        queue.enqueueNDRangeKernel(
-                kernel,
-                cl::NDRange(1),
-                cl::NDRange(4, 4),
-                cl::NDRange(5),
-                nullptr,
-                &event);
-
-        event.wait();
     }
-    catch (cl::Error &err) {
-        std::cerr
-                << "ERROR: "
-                << err.what()
-                << "("
-                << err.err()
-                << ")"
-                << std::endl;
+    
+    if (!device) {
+        fprintf(stderr, "Failed to find any OpenCL GPU device. Sorry.\n");
+        return 1;
     }
-
-    delete[] matrix;
-
-    return EXIT_SUCCESS;
+    
+    
+    // Setup OpenCL
+    cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, NULL);
+    cl_command_queue command_queue = clCreateCommandQueue(context, device, 0, NULL);
+    
+    // Compile the kernel
+    const char* program_code = ""
+        "kernel void main(global uchar* in, global uchar* out)\n"
+        "{\n"
+        "   size_t i = get_global_id(0);\n"
+        "   out[i] = in[i] - 3;\n"
+        "}\n"
+    ;
+    cl_program program = clCreateProgramWithSource(context, 1, (const char*[]){program_code}, NULL, NULL);
+    cl_int error = clBuildProgram(program, 0, NULL, "", NULL, NULL);
+    if (error) {
+        char compiler_log[4096];
+        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
+        printf("OpenCL compiler failed:\n%s", compiler_log);
+        return 2;
+    }
+    cl_kernel kernel = clCreateKernel(program, "main", NULL);
+    
+    // Setup GPU buffers
+    char* transformed = "Khoor#Zruog$";
+    size_t transformed_length = strlen(transformed);
+    cl_mem buffer_in = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, transformed_length, transformed, NULL);
+    cl_mem buffer_out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, transformed_length, NULL, NULL);
+    
+    // Execute kernel
+    clSetKernelArg(kernel, 0, sizeof(buffer_in), &buffer_in);
+    clSetKernelArg(kernel, 1, sizeof(buffer_out), &buffer_out);
+    clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, (const size_t[]){ transformed_length }, NULL, 0, NULL, NULL);
+    
+    // Output result
+    char* result = clEnqueueMapBuffer(command_queue, buffer_out, CL_TRUE, CL_MAP_READ, 0, transformed_length, 0, NULL, NULL, NULL);
+        printf("in:  %.*s\n", (int)transformed_length, transformed);
+        printf("out: %.*s\n", (int)transformed_length, result);
+    clEnqueueUnmapMemObject(command_queue, buffer_out, result, 0, NULL, NULL);
+    
+    // Clean up
+    clReleaseMemObject(buffer_in);
+    clReleaseMemObject(buffer_out);
+    clReleaseProgram(program);
+    clReleaseCommandQueue(command_queue);
+    clReleaseContext(context);
+    
+    return 0;
 }
