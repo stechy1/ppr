@@ -8,6 +8,7 @@
 
 #endif
 
+#include <iostream>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
