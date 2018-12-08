@@ -24,6 +24,8 @@ int main() {
     cl_int err = CL_SUCCESS;
     const size_t matrix_size = 1024;
     auto* matrix = new double[matrix_size];
+    double min = 0.0;
+    double max = 0.0;
 
     std::mt19937 rng;
     rng.seed(std::random_device()());
@@ -32,8 +34,6 @@ int main() {
     for (int i = 0; i < matrix_size; ++i) {
         matrix[i] = dist6(rng);
     }
-
-    //std::ifstream program("program.cl", std::ifstream::in);
 
     std::ifstream file("program.cl", std::ios::binary | std::ios::ate);
     std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -58,6 +58,8 @@ int main() {
 
         cl::Kernel kernel(program_, "normalize", &err);
         kernel.setArg(0, sizeof(double) * matrix_size, matrix);
+        kernel.setArg(1, sizeof(double), &max);
+        kernel.setArg(2, sizeof(double), &min);
 
         cl::Event event;
         cl::CommandQueue queue(context, devices[0], 0, &err);
