@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <random>
 
 std::string helloStr = "__kernel void "
                       "hello(void) "
@@ -20,6 +21,19 @@ std::string helloStr = "__kernel void "
 
 int main() {
     cl_int err = CL_SUCCESS;
+    const size_t matrix_size = 1024;
+    auto* matrix = new double[matrix_size];
+    double min = 0.0;
+    double max = 0.0;
+
+    std::mt19937 rng;
+    rng.seed(std::random_device()());
+    std::uniform_int_distribution<std::mt19937::result_type> dist6(1,matrix_size);
+
+    for (int i = 0; i < matrix_size; ++i) {
+        matrix[i] = dist6(rng);
+    }
+
     try {
 
         std::vector<cl::Platform> platforms;
@@ -44,6 +58,7 @@ int main() {
         std::cout << "Uspesne jsem sestavil program." << std::endl;
 
         cl::Kernel kernel(program_, "hello", &err);
+        kernel.setArg(0, sizeof(double) * matrix_size, matrix);
 
         cl::Event event;
         cl::CommandQueue queue(context, devices[0], 0, &err);
