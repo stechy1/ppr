@@ -97,7 +97,7 @@ int main(int argc, char const *argv[])
     /* cekani na vysledek operace */
     clFinish(queue);
     /* precteni vysledku z GPU vypoctu */
-    error = clEnqueueReadBuffer(queue,matrix3,CL_TRUE,0,bytes,res,0,NULL,NULL);
+    error = clEnqueueReadBuffer(queue,matrix3,CL_TRUE,0,pocet_prvku,res,0,NULL,NULL);
     /* pokud nebylo mozne vystup precist */
     if(error != CL_SUCCESS){
         std::cout << "Vystup se nezdarilo precist" << std::endl;
