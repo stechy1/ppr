@@ -37,6 +37,7 @@ int main() {
 
     std::ifstream file("program.cl", std::ios::binary | std::ios::ate);
     std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::cout << program << std::endl;
 
     try {
 
