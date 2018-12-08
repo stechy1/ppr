@@ -11,15 +11,30 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <random>
+#include <fstream>
 
-std::string helloStr = "__kernel void "
-                      "hello(void) "
-                      "{ "
-                      "  "
-                      "} ";
+//std::string helloStr = "__kernel void "
+//                      "hello(void) "
+//                      "{ "
+//                      "  "
+//                      "} ";
 
 int main() {
     cl_int err = CL_SUCCESS;
+    const size_t matrix_size = 1024;
+    auto* matrix = new double[matrix_size];
+
+    std::mt19937 rng;
+    rng.seed(std::random_device()());
+    std::uniform_int_distribution<std::mt19937::result_type> dist6(1,matrix_size);
+
+    for (int i = 0; i < matrix_size; ++i) {
+        matrix[i] = dist6(rng);
+    }
+
+    std::ifstream program("program.cl", std::ifstream::in);
+
     try {
 
         std::vector<cl::Platform> platforms;
@@ -38,7 +53,8 @@ int main() {
         cl::Program program_ = cl::Program(context, source);
         program_.build(devices);
 
-        cl::Kernel kernel(program_, "hello", &err);
+        cl::Kernel kernel(program_, "normalize", &err);
+        kernel.setArg(0, sizeof(double) * matrix_size, matrix);
 
         cl::Event event;
         cl::CommandQueue queue(context, devices[0], 0, &err);
@@ -61,6 +77,8 @@ int main() {
                 << ")"
                 << std::endl;
     }
+
+    delete[] matrix;
 
     return EXIT_SUCCESS;
 }
