@@ -20,7 +20,6 @@ int main(int argc, char const *argv[])
 {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
-    double* vysledek = new double;
 
     cl_int error = 0;
     cl_context context;
@@ -98,7 +97,7 @@ int main(int argc, char const *argv[])
     /* cekani na vysledek operace */
     clFinish(queue);
     /* precteni vysledku z GPU vypoctu */
-    error = clEnqueueReadBuffer(queue,matrix3,CL_TRUE,0,pocet_prvku,vysledek,0,NULL,NULL);
+    error = clEnqueueReadBuffer(queue,matrix,CL_TRUE,0,pocet_prvku,NULL,0,NULL,NULL);
     /* pokud nebylo mozne vystup precist */
     if(error != CL_SUCCESS){
         std::cout << "Vystup se nezdarilo precist" << std::endl;
@@ -116,5 +115,4 @@ int main(int argc, char const *argv[])
     /* uvolneni pameti OpenCL kontextu */
     cleanup_context: clReleaseContext(context);
     delete[] matice;
-    delete vysledek;
 }
