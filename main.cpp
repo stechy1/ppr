@@ -107,7 +107,7 @@ int main(int argc, char const *argv[])
     /* uvolneni pameti jadra */
     cleanup_kernel:  clReleaseKernel(kernel);
     /* uvolneni pameti programu */
-    cleanup_program: clReleaseProgram(program);
+    cleanup_program: clReleaseProgram(program.c_str());
     /* uvolneni pameti 1. vstupni matice */
     cleanup_matrix: clReleaseMemObject(matrix);
     /* uvolneni pameti fronty prikazu */
