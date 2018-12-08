@@ -1,6 +1,12 @@
+// Evolved from https://github.com/arkanis/minimal-opencl-on-windows.git
+// 2017-06-01 Paul Kienzle modified for testing double precision kernels
+
+#define SOURCE "#include <add.c>\n"
+
 #include <stdio.h>
 #include <string.h>
 #include <CL/cl.h>
+
 
 int main() {
     // Find the first GPU device
@@ -36,7 +42,7 @@ int main() {
     cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, NULL);
     cl_command_queue command_queue = clCreateCommandQueue(context, device, 0, NULL);
     
-    // Compile the kernel
+    // Compile the kernel stored in hello.c
     const char* program_code = ""
         "kernel void main(global uchar* in, global uchar* out)\n"
         "{\n"
@@ -45,30 +51,40 @@ int main() {
         "}\n"
     ;
     cl_program program = clCreateProgramWithSource(context, 1, (const char*[]){program_code}, NULL, NULL);
-    cl_int error = clBuildProgram(program, 0, NULL, "", NULL, NULL);
+        printf("building...\n%s", program_code);
+    cl_int error = clBuildProgram(program, 0, NULL, "-I.", NULL, NULL);
     if (error) {
         char compiler_log[4096];
         clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
-        printf("OpenCL compiler failed:\n%s", compiler_log);
+        printf("Program build info:\n%s", compiler_log);
+        printf("OpenCL compiler failed: %d\n", error);
         return 2;
     }
-    cl_kernel kernel = clCreateKernel(program, "main", NULL);
+        printf("loading...\n");
+    cl_kernel kernel = clCreateKernel(program, "hello", NULL);
     
     // Setup GPU buffers
-    char* transformed = "Khoor#Zruog$";
-    size_t transformed_length = strlen(transformed);
-    cl_mem buffer_in = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, transformed_length, transformed, NULL);
-    cl_mem buffer_out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, transformed_length, NULL, NULL);
+    double transformed[8] = {0.,1.,2.,3.,4.,5.,6.,7.};
+    size_t transformed_length = 8;
+    cl_mem buffer_in = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, transformed_length*sizeof(*transformed), transformed, NULL);
+    cl_mem buffer_out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, transformed_length*sizeof(*transformed), NULL, NULL);
     
     // Execute kernel
+        printf("running...\n");
     clSetKernelArg(kernel, 0, sizeof(buffer_in), &buffer_in);
     clSetKernelArg(kernel, 1, sizeof(buffer_out), &buffer_out);
-    clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, (const size_t[]){ transformed_length }, NULL, 0, NULL, NULL);
+    size_t global_work_size[1];
+    global_work_size[0] = transformed_length;
+    error = clEnqueueNDRangeKernel(command_queue, kernel, (cl_uint)1, NULL, global_work_size, NULL, (cl_uint)0, NULL, NULL);
+    if (error) {
+        printf("Enqueue kernel failed: %d\n", error);
+        return 2;
+    }
     
     // Output result
-    char* result = clEnqueueMapBuffer(command_queue, buffer_out, CL_TRUE, CL_MAP_READ, 0, transformed_length, 0, NULL, NULL, NULL);
-        printf("in:  %.*s\n", (int)transformed_length, transformed);
-        printf("out: %.*s\n", (int)transformed_length, result);
+    double* result = clEnqueueMapBuffer(command_queue, buffer_out, CL_TRUE, CL_MAP_READ, 0, transformed_length*sizeof(*transformed), 0, NULL, NULL, NULL);
+    printf("in: "); for (int k=0; k<transformed_length; k++) printf(" %8.5f", transformed[k]); printf("\n");
+    printf("out:"); for (int k=0; k<transformed_length; k++) printf(" %8.5f", result[k]); printf("\n");
     clEnqueueUnmapMemObject(command_queue, buffer_out, result, 0, NULL, NULL);
     
     // Clean up
