@@ -35,7 +35,7 @@ int main() {
         matrix[i] = dist6(rng);
     }
 
-    std::ifstream file("program.cl", std::ios::binary | std::ios::ate);
+    std::ifstream file("../program.cl", std::ifstream::in);
     std::string program((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     std::cout << program << std::endl;
 
@@ -47,20 +47,25 @@ int main() {
             std::cout << "Platform size 0\n";
             return -1;
         }
+        std::cout << "Nalezl jsme nejakou platformu." << std::endl;
 
         cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0};
         cl::Context context(CL_DEVICE_TYPE_GPU, properties);
+        std::cout << "Mam vytvoreny kontext" << std::endl;
 
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
         cl::Program::Sources source(1,std::make_pair(program.c_str(), program.length()));
+        std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
         cl::Program program_ = cl::Program(context, source);
         program_.build(devices);
+        std::cout << "Uspesne jsem sestavil program." << std::endl;
 
         cl::Kernel kernel(program_, "normalize", &err);
         kernel.setArg(0, sizeof(double) * matrix_size, matrix);
         kernel.setArg(1, sizeof(double), &max);
         kernel.setArg(2, sizeof(double), &min);
+
 
         cl::Event event;
         cl::CommandQueue queue(context, devices[0], 0, &err);
