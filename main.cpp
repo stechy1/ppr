@@ -71,9 +71,9 @@ int main() {
         cl::CommandQueue queue(context, devices[0], 0, &err);
         queue.enqueueNDRangeKernel(
                 kernel,
-                cl::NullRange,
+                cl::NDRange(1),
                 cl::NDRange(4, 4),
-                cl::NullRange,
+                cl::NDRange(5),
                 nullptr,
                 &event);
 
