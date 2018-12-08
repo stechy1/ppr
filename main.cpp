@@ -58,7 +58,7 @@ int main() {
         std::cout << "Uspesne jsem sestavil program." << std::endl;
 
         cl::Kernel kernel(program_, "hello", &err);
-        kernel.setArg(0, sizeof(double) * matrix_size, matrix);
+        kernel.setArg(0, sizeof(double) * matrix_size, &matrix);
 
         cl::Event event;
         cl::CommandQueue queue(context, devices[0], 0, &err);
