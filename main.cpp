@@ -62,7 +62,7 @@ int main(int argc, char const *argv[])
     }
 
     /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
-    program = clCreateProgramWithSource(context,1,programc_str(),NULL,&error);
+    program = clCreateProgramWithSource(context,1,program.c_str(),NULL,&error);
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
