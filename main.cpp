@@ -8,7 +8,7 @@
 
 #endif
 
-#include <stdio>
+#include <string>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
