@@ -5077,6 +5077,11 @@ public:
                 "",
                 NULL,
                 NULL);
+            if (error) {
+                char compiler_log[4096];
+                clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
+                std::cout << "OpenCL compiler failed:\n" << compiler_log << std::endl;
+            }
 
             detail::errHandler(error, __BUILD_PROGRAM_ERR);
         }
@@ -5104,6 +5109,12 @@ public:
 
         object_ = ::clCreateProgramWithSource(
             context(), (cl_uint)n, strings, lengths, &error);
+
+        if (error) {
+            char compiler_log[4096];
+            clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
+            std::cout << "OpenCL compiler failed:\n" << compiler_log << std::endl;
+        }
 
         detail::errHandler(error, __CREATE_PROGRAM_WITH_SOURCE_ERR);
         if (err != NULL) {
