@@ -15,8 +15,8 @@ int main(int argc, char const* argv[]) {
     double* matice = new double[pocet_prvku];
 
     double res[pocet_prvku_vysledne_matice];
-    res[0] = 0.0;
-    res[1] = 0.0;
+    res[0] = pocet_prvku; // min
+    res[1] = 0.0; // max
 
     std::ifstream file("../program.cl", std::ifstream::in);
     std::streamsize size = file.tellg();

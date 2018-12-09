@@ -3,6 +3,7 @@ __kernel void moje_hledani_extremu(
     const int pocet_prvku) {
     const int idx = get_global_id(0);
     if (idx < pocet_prvku) {
+        barrier(CLK_LOCAL_MEM_FENCE);
         if (mat[idx] < res[0]) { res[0] = mat[idx]; }
         if (mat[idx] > res[1]) { res[1] = mat[idx]; }
     }
