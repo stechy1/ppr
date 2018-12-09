@@ -10,11 +10,11 @@
 
 
 int main(int argc, char const* argv[]) {
-    size_t pocet_prvku = 12;
-    size_t pocet_prvku_vysledne_matice = 2;
+    size_t pocet_prvku = 8;
+    size_t pocet_prvku_vysledne_matice = pocet_prvku;
     double* matice = new double[pocet_prvku];
-    size_t globalWorkSize = pocet_prvku_vysledne_matice;
-    size_t localWorkSize = 2;
+    size_t globalWorkSize = pocet_prvku;
+    size_t localWorkSize = pocet_prvku;
 
     double res[pocet_prvku_vysledne_matice];
     res[0] = std::numeric_limits<double>::max(); // min
@@ -116,7 +116,8 @@ int main(int argc, char const* argv[]) {
     error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix_in);
     error |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*) &matrix_out);
     error |= clSetKernelArg(kernel, 2, sizeof(int), (void*) &pocet_prvku);
-    error |= clSetKernelArg(kernel, 3, sizeof(double) * 2, NULL); // Nejaka prechodova pamet
+    error |= clSetKernelArg(kernel, 3, sizeof(double) * pocet_prvku, NULL); // Nejaka prechodova pamet
+    error |= clSetKernelArg(kernel, 4, sizeof(double) * pocet_prvku, NULL); // Nejaka prechodova pamet
     if (error != CL_SUCCESS) {
         std::cout << "Parametry nebyly predany " << error << std::endl;
         goto cleanup_kernel;
