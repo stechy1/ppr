@@ -67,6 +67,9 @@ int main(int argc, char const *argv[]) {
     /* jestlize nebylo mozne program sestavit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo zkompilovat" << std::endl;
+        char compiler_log[4096];
+        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
+        std::cout << "OpenCL compiler failed:\n" << compiler_log << std::endl;
         goto cleanup_matrix;
     }
     std::cout << "Vytvarim kernel..." << std::endl;
