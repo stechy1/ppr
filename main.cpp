@@ -40,14 +40,14 @@ int main(int argc, char const* argv[]) {
     context = clCreateContext(0, 1, &device, NULL, NULL, &error);
     /* pokud se vytvoreni kontextu nezdarilo */
     if (error != CL_SUCCESS) {
-        std::cout << "Kontext nevytvoren" << std::endl;
+        std::cout << "Kontext nevytvoren: " << error << std::endl;
         goto cleanup_context;
     }
     std::cout << "Vytvarim frontu prikazu..." << std::endl;
     queue = clCreateCommandQueueWithProperties(context, device, 0, &error);
     /* pokud se vytvoreni fronty nezdarilo */
     if (error != CL_SUCCESS) {
-        std::cout << "Fronta prikazu nebyla vytvorena" << std::endl;
+        std::cout << "Fronta prikazu nebyla vytvorena: " << error << std::endl;
         goto cleanup_queue;
     }
 
@@ -65,7 +65,7 @@ int main(int argc, char const* argv[]) {
     program = clCreateProgramWithSource(context, 1, &p_zdrojovy_kod, NULL, &error);
     /* jestlize nebylo mozne program vytvorit */
     if (error != CL_SUCCESS) {
-        std::cout << "Program se nepodarilo vytvorit" << std::endl;
+        std::cout << "Program se nepodarilo vytvorit: " << error << std::endl;
         goto cleanup_matrix;
     }
     std::cout << "Sestavuji program..." << std::endl;
@@ -82,7 +82,7 @@ int main(int argc, char const* argv[]) {
     kernel = clCreateKernel(program, "moje_normalizace", &error);
     /* v pripade, ze se vytvoreni kernelu nepovedlo */
     if (error != CL_SUCCESS) {
-        std::cout << "Kernel se nepodarilo vytvorit" << std::endl;
+        std::cout << "Kernel se nepodarilo vytvorit: " << error << std::endl;
         goto cleanup_kernel;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char const* argv[]) {
     error = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &pocet_prvku, NULL, 0, NULL, NULL);
     /* pokud se spusteni neprovedlo */
     if (error != CL_SUCCESS) {
-        std::cout << "Nepodarilo se spustit vypocet na GPU" << std::endl;
+        std::cout << "Nepodarilo se spustit vypocet na GPU: " << error << std::endl;
         goto cleanup_kernel;
     }
     /* cekani na vysledek operace */
@@ -109,7 +109,7 @@ int main(int argc, char const* argv[]) {
     error = clEnqueueReadBuffer(queue, matrix, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
     /* pokud nebylo mozne vystup precist */
     if (error != CL_SUCCESS) {
-        std::cout << "Vystup se nezdarilo precist" << std::endl;
+        std::cout << "Vystup se nezdarilo precist: " << error << std::endl;
         goto cleanup_kernel;
     }
 
