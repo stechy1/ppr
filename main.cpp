@@ -11,7 +11,7 @@
 int main(int argc, char const *argv[]) {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
-    std::string zdrojovy_kod = "__kernel void normalize() {}";
+    std::string zdrojovy_kod = "__kernel void normalize() {const int idx = get_global_id(0);}";
     const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
 
     cl_int error = 0;
@@ -23,21 +23,21 @@ int main(int argc, char const *argv[]) {
     cl_kernel kernel;
     size_t matrix_size = sizeof(double) * pocet_prvku;
 
-    /* ziskani ID GPU zarizeni */
+    std::cout << "Hledam dostupna zarizeni..." << std::endl;
     error = clGetDeviceIDs(NULL,CL_DEVICE_TYPE_GPU,1,&device,NULL);
     /* pokud ID nebylo nalezeno nebo nastala jina chyba */
     if(error != CL_SUCCESS){
         std::cout << "Nenalezeno ID zarizeni" << std::endl;
         return -1;
     }
-    /* vytvoreni OpenCL kontextu */
+    std::cout << "Vytvarim kontext..." << std::endl;
     context = clCreateContext(0,1,&device,NULL,NULL,&error);
     /* pokud se vytvoreni kontextu nezdarilo */
     if(error != CL_SUCCESS){
-        std::cout << "KOntext nevytvoren" << std::endl;
+        std::cout << "Kontext nevytvoren" << std::endl;
         goto cleanup_context;
     }
-    /* vytvoreni fronty prikazu pro dane zarizeni */
+    std::cout << "Vytvarim frontu prikazu..." << std::endl;
     queue = clCreateCommandQueueWithProperties(context,device,0,&error);
     /* pokud se vytvoreni fronty nezdarilo */
     if(error != CL_SUCCESS){
@@ -45,8 +45,9 @@ int main(int argc, char const *argv[]) {
         goto cleanup_queue;
     }
 
+    std::cout << "Vytvarim prostor pro matici" << std::endl;
     matrix = clCreateBuffer(context,CL_MEM_READ_ONLY,matrix_size,NULL,&error);
-    /* predani pointeru 1. matice do OpenCL bufferu */
+    std::cout << "Predavam obsah matice do bufferu" << std::endl;
     error |= clEnqueueWriteBuffer(queue,matrix,CL_TRUE,0,matrix_size,matice,0,NULL,NULL);
     /* pokud se vytvoreni bufferu nepovedlo */
     if(error != CL_SUCCESS){
@@ -54,19 +55,21 @@ int main(int argc, char const *argv[]) {
         goto cleanup_matrix;
     }
 
-    /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
+    std::cout << "Vytvarim program dle zdrojoveho kodu..." << std::endl;
     program = clCreateProgramWithSource(context,1,&p_zdrojovy_kod,NULL,&error);
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
         goto cleanup_matrix;
     }
+    std::cout << "Sestavuji program..." << std::endl;
     error = clBuildProgram(program,0,NULL,NULL,NULL,NULL);
     /* jestlize nebylo mozne program sestavit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo zkompilovat" << std::endl;
         goto cleanup_matrix;
     }
+    std::cout << "Vytvarim kernel..." << std::endl;
     kernel = clCreateKernel(program,"normalize",&error);
     /* v pripade, ze se vytvoreni kernelu nepovedlo */
     if(error != CL_SUCCESS){
@@ -74,13 +77,14 @@ int main(int argc, char const *argv[]) {
         goto cleanup_kernel;
     }
 
+    std::cout << "Vkladam parametry do kernelu..." << std::endl;
     error = clSetKernelArg(kernel,0,sizeof(cl_mem),(void*)&matrix);
     if(error != CL_SUCCESS){
         std::cout << "Parametry nebyly predany" << std::endl;
         goto cleanup_kernel;
     }
 
-    /* spusteni vypoctu na GPU */
+    std::cout << "Spoustim kod na GPU..." << std::endl;
     error = clEnqueueNDRangeKernel(queue,kernel,1,NULL,&pocet_prvku,NULL,0,NULL,NULL);
     /* pokud se spusteni neprovedlo */
     if(error != CL_SUCCESS){
@@ -88,8 +92,10 @@ int main(int argc, char const *argv[]) {
         goto cleanup_kernel;
     }
     /* cekani na vysledek operace */
+    std::cout << "Cekam na dokonceni kodu na GPU..." << std::endl;
     clFinish(queue);
-    /* precteni vysledku z GPU vypoctu */
+
+    std::cout << "Ctu vysledek z GPU..." << std::endl;
     error = clEnqueueReadBuffer(queue,matrix,CL_TRUE,0,pocet_prvku,NULL,0,NULL,NULL);
     /* pokud nebylo mozne vystup precist */
     if(error != CL_SUCCESS){
@@ -97,7 +103,7 @@ int main(int argc, char const *argv[]) {
         goto cleanup_kernel;
     }
 
-    /* uvolneni pameti jadra */
+    std::cout << "Vse se uspesne provedlo, jdu vycistit pamet..." << std::endl;
     cleanup_kernel:  clReleaseKernel(kernel);
     /* uvolneni pameti programu */
     cleanup_program: clReleaseProgram(program);
