@@ -19,7 +19,7 @@ int main(int argc, char const* argv[]) {
 //                               "    }\n"
 //                               "}";
     std::string zdrojovy_kod = "__kernel void moje_normalizace(\n"
-                               "__global double* mat, const int pocet_prvku) {\n"
+                               "__global double* mat, __global double* out, const int pocet_prvku) {\n"
                                "    const int idx = get_global_id(0);\n"
                                "}";
     const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
@@ -28,7 +28,7 @@ int main(int argc, char const* argv[]) {
     cl_context context;
     cl_command_queue queue;
     cl_device_id device;
-    cl_mem matrix;
+    cl_mem matrix_in, matrix_out;
     cl_program program;
     cl_kernel kernel;
     size_t matrix_size = sizeof(double) * pocet_prvku;
@@ -58,13 +58,21 @@ int main(int argc, char const* argv[]) {
     }
 
     std::cout << "Vytvarim prostor pro matici" << std::endl;
-    matrix = clCreateBuffer(context, CL_MEM_READ_WRITE, matrix_size, NULL, &error);
-    std::cout << "Predavam obsah matice do bufferu" << std::endl;
-    error |= clEnqueueWriteBuffer(queue, matrix, CL_TRUE, 0, matrix_size, matice, 0, NULL, NULL);
+    matrix_in = clCreateBuffer(context, CL_MEM_READ_WRITE, matrix_size, NULL, &error);
+    std::cout << "Predavam obsah matice do write only bufferu" << std::endl;
+    error |= clEnqueueWriteBuffer(queue, matrix_in, CL_TRUE, 0, matrix_size, matice, 0, NULL, NULL);
     /* pokud se vytvoreni bufferu nepovedlo */
     if (error != CL_SUCCESS) {
-        std::cout << "Nepodarilo se vytvorit buffer pro matici" << error << std::endl;
-        goto cleanup_matrix;
+        std::cout << "Nepodarilo se vytvorit write buffer pro matici" << error << std::endl;
+        goto cleanup_matrix_in;
+    }
+
+    matrix_out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, matrix_size, NULL, &error);
+    std::cout << "Predavam obsah matice do read only bufferu" << std::endl;
+    /* pokud se vytvoreni bufferu nepovedlo */
+    if (error != CL_SUCCESS) {
+        std::cout << "Nepodarilo se vytvorit read buffer pro matici" << error << std::endl;
+        goto cleanup_matrix_out;
     }
 
     std::cout << "Vytvarim program dle zdrojoveho kodu..." << std::endl;
@@ -72,7 +80,7 @@ int main(int argc, char const* argv[]) {
     /* jestlize nebylo mozne program vytvorit */
     if (error != CL_SUCCESS) {
         std::cout << "Program se nepodarilo vytvorit: " << error << std::endl;
-        goto cleanup_matrix;
+        goto cleanup_matrix_in;
     }
     std::cout << "Sestavuji program..." << std::endl;
     error = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
@@ -82,7 +90,7 @@ int main(int argc, char const* argv[]) {
         char compiler_log[4096];
         clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
         std::cout << "OpenCL compiler failed:\n" << compiler_log << std::endl;
-        goto cleanup_matrix;
+        goto cleanup_matrix_in;
     }
     std::cout << "Vytvarim kernel..." << std::endl;
     kernel = clCreateKernel(program, "moje_normalizace", &error);
@@ -93,8 +101,9 @@ int main(int argc, char const* argv[]) {
     }
 
     std::cout << "Vkladam parametry do kernelu..." << std::endl;
-    error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix);
-    error |= clSetKernelArg(kernel, 1, sizeof(int), (void*) &pocet_prvku);
+    error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix_in);
+    error |= clSetKernelArg(kernel, 1,sizeof(cl_mem),(void*)&matrix_out);
+    error |= clSetKernelArg(kernel, 2, sizeof(int), (void*) &pocet_prvku);
     if (error != CL_SUCCESS) {
         std::cout << "Parametry nebyly predany " << error << std::endl;
         goto cleanup_kernel;
@@ -112,7 +121,7 @@ int main(int argc, char const* argv[]) {
     clFinish(queue);
 
     std::cout << "Ctu vysledek z GPU..." << std::endl;
-    error = clEnqueueReadBuffer(queue, matrix, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
+    error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
     /* pokud nebylo mozne vystup precist */
     if (error != CL_SUCCESS) {
         std::cout << "Vystup se nezdarilo precist: " << error << std::endl;
@@ -125,9 +134,11 @@ int main(int argc, char const* argv[]) {
     /* uvolneni pameti programu */
     cleanup_program:
     clReleaseProgram(program);
+    cleanup_matrix_out:
+    clReleaseMemObject(matrix_out);
     /* uvolneni pameti 1. vstupni matice */
-    cleanup_matrix:
-    clReleaseMemObject(matrix);
+    cleanup_matrix_in:
+    clReleaseMemObject(matrix_in);
     /* uvolneni pameti fronty prikazu */
     cleanup_queue:
     clReleaseCommandQueue(queue);
