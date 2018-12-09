@@ -13,10 +13,12 @@ int main(int argc, char const* argv[]) {
     size_t pocet_prvku = 12;
     size_t pocet_prvku_vysledne_matice = 2;
     double* matice = new double[pocet_prvku];
+    size_t globalWorkSize = pocet_prvku_vysledne_matice;
+    size_t localWorkSize = 2;
 
     double res[pocet_prvku_vysledne_matice];
-    res[0] = pocet_prvku; // min
-    res[1] = 0.0; // max
+    res[0] = std::numeric_limits<double>::max(); // min
+    res[1] = std::numeric_limits<double>::lowest(); // max
 
     std::ifstream file("../program.cl", std::ifstream::in);
     std::streamsize size = file.tellg();
@@ -114,13 +116,14 @@ int main(int argc, char const* argv[]) {
     error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix_in);
     error |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*) &matrix_out);
     error |= clSetKernelArg(kernel, 2, sizeof(int), (void*) &pocet_prvku);
+    error |= clSetKernelArg(kernel, 3, sizeof(double) * 2, NULL); // Nejaka prechodova pamet
     if (error != CL_SUCCESS) {
         std::cout << "Parametry nebyly predany " << error << std::endl;
         goto cleanup_kernel;
     }
 
     std::cout << "Spoustim kod na GPU..." << std::endl;
-    error = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &pocet_prvku_vysledne_matice, NULL, 0, NULL, NULL);
+    error = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalWorkSize, &localWorkSize, 0, NULL, NULL);
     /* pokud se spusteni neprovedlo */
     if (error != CL_SUCCESS) {
         std::cout << "Nepodarilo se spustit vypocet na GPU: " << error << std::endl;
@@ -144,6 +147,7 @@ int main(int argc, char const* argv[]) {
     std::cout << std::endl;
 
     std::cout << "Vse se uspesne provedlo, jdu vycistit pamet..." << std::endl;
+
     cleanup_kernel:
     clReleaseKernel(kernel);
     /* uvolneni pameti programu */
