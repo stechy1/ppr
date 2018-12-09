@@ -37,13 +37,13 @@ int main(int argc, char const* argv[]) {
 
     std::mt19937 rng;
     rng.seed(std::random_device()());
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(1,pocet_prvku);
+    std::uniform_int_distribution<std::mt19937::result_type> dist6(1, pocet_prvku);
     std::cout << "Vytvarim matici o velikosti: " << pocet_prvku << " prvku." << std::endl;
     for (int i = 0; i < pocet_prvku; ++i) {
         matice[i] = dist6(rng);
         std::cout << matice[i] << " | ";
     }
-    std:: cout << std::endl;
+    std::cout << std::endl;
 
     std::cout << "Hledam dostupna zarizeni..." << std::endl;
     error = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
@@ -112,7 +112,7 @@ int main(int argc, char const* argv[]) {
 
     std::cout << "Vkladam parametry do kernelu..." << std::endl;
     error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix_in);
-    error |= clSetKernelArg(kernel, 1,sizeof(cl_mem),(void*)&matrix_out);
+    error |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*) &matrix_out);
     error |= clSetKernelArg(kernel, 2, sizeof(int), (void*) &pocet_prvku);
     if (error != CL_SUCCESS) {
         std::cout << "Parametry nebyly predany " << error << std::endl;
@@ -131,8 +131,7 @@ int main(int argc, char const* argv[]) {
     clFinish(queue);
 
     std::cout << "Ctu vysledek z GPU..." << std::endl;
-    //error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
-    error = clEnqueueReadBuffer(queue,matrix_out,CL_TRUE,0,matrix_size,matice,0,NULL,NULL);
+    error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, matrix_size, matice, 0, NULL, NULL);
     /* pokud nebylo mozne vystup precist */
     if (error != CL_SUCCESS) {
         std::cout << "Vystup se nezdarilo precist: " << error << std::endl;
@@ -140,10 +139,9 @@ int main(int argc, char const* argv[]) {
     }
 
     for (int i = 0; i < pocet_prvku; ++i) {
-        matice[i] = dist6(rng);
         std::cout << matice[i] << " | ";
     }
-    std:: cout << std::endl;
+    std::cout << std::endl;
 
     std::cout << "Vse se uspesne provedlo, jdu vycistit pamet..." << std::endl;
     cleanup_kernel:
