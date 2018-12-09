@@ -1,13 +1,6 @@
 #define __CL_ENABLE_EXCEPTIONS
 
-#if defined(__APPLE__) || defined(__MACOSX)
-#include <OpenCL/cl.hpp>
-#else
-
-#include <cl.hpp>
-
-#endif
-
+#include <CL/opencl.h>
 #include <iostream>
 #include <string>
 #include <cstdio>
@@ -15,11 +8,11 @@
 #include <random>
 
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
     std::string zdrojovy_kod = "__kernel void normalize() {}";
+    const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
 
     cl_int error = 0;
     cl_context context;
@@ -35,7 +28,7 @@ int main(int argc, char const *argv[])
     /* pokud ID nebylo nalezeno nebo nastala jina chyba */
     if(error != CL_SUCCESS){
         std::cout << "Nenalezeno ID zarizeni" << std::endl;
-        return;
+        return -1;
     }
     /* vytvoreni OpenCL kontextu */
     context = clCreateContext(0,1,&device,NULL,NULL,&error);
@@ -62,7 +55,7 @@ int main(int argc, char const *argv[])
     }
 
     /* vytvoreni programu dle zdrojoveho textu v promenne "zdrojovy_kod" */
-    program = clCreateProgramWithSource(context,1,zdrojovy_kod.c_str(),NULL,&error);
+    program = clCreateProgramWithSource(context,1,&p_zdrojovy_kod,NULL,&error);
     /* jestlize nebylo mozne program vytvorit */
     if(error != CL_SUCCESS){
         std::cout << "Program se nepodarilo vytvorit" << std::endl;
@@ -107,7 +100,7 @@ int main(int argc, char const *argv[])
     /* uvolneni pameti jadra */
     cleanup_kernel:  clReleaseKernel(kernel);
     /* uvolneni pameti programu */
-    cleanup_program: clReleaseProgram(zdrojovy_kod.c_str());
+    cleanup_program: clReleaseProgram(program);
     /* uvolneni pameti 1. vstupni matice */
     cleanup_matrix: clReleaseMemObject(matrix);
     /* uvolneni pameti fronty prikazu */
