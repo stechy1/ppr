@@ -9,7 +9,7 @@
 
 
 int main(int argc, char const* argv[]) {
-    size_t pocet_prvku = 1024;
+    size_t pocet_prvku = 12;
     double* matice = new double[pocet_prvku];
     std::string zdrojovy_kod = "__kernel void moje_normalizace(\n"
                                "__global double* mat, __global double* out, const int pocet_prvku) {\n"
@@ -34,6 +34,16 @@ int main(int argc, char const* argv[]) {
     size_t matrix_size = sizeof(double) * pocet_prvku;
 
     std::cout << "Kernel kod:\n" << zdrojovy_kod << std::endl;
+
+    std::mt19937 rng;
+    rng.seed(std::random_device()());
+    std::uniform_int_distribution<std::mt19937::result_type> dist6(1,pocet_prvku);
+    std::cout << "Vytvarim matici o velikosti: " << pocet_prvku << " prvku." << std::endl;
+    for (int i = 0; i < pocet_prvku; ++i) {
+        matice[i] = dist6(rng);
+        std::cout << matice[i] << " | ";
+    }
+    std:: cout << std::endl;
 
     std::cout << "Hledam dostupna zarizeni..." << std::endl;
     error = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
@@ -121,12 +131,19 @@ int main(int argc, char const* argv[]) {
     clFinish(queue);
 
     std::cout << "Ctu vysledek z GPU..." << std::endl;
-    error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
+    //error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, matrix_size, NULL, 0, NULL, NULL);
+    error = clEnqueueReadBuffer(queue,matrix_out,CL_TRUE,0,matrix_size,matice,0,NULL,NULL);
     /* pokud nebylo mozne vystup precist */
     if (error != CL_SUCCESS) {
         std::cout << "Vystup se nezdarilo precist: " << error << std::endl;
         goto cleanup_kernel;
     }
+
+    for (int i = 0; i < pocet_prvku; ++i) {
+        matice[i] = dist6(rng);
+        std::cout << matice[i] << " | ";
+    }
+    std:: cout << std::endl;
 
     std::cout << "Vse se uspesne provedlo, jdu vycistit pamet..." << std::endl;
     cleanup_kernel:
