@@ -11,17 +11,17 @@
 int main(int argc, char const* argv[]) {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
-//    std::string zdrojovy_kod = "__kernel void moje_normalizace(\n"
-//                               "__global double* mat, const int pocet_prvku) {\n"
-//                               "    const int idx = get_global_id(0);\n"
-//                               "    if (idx < pocet_prvku) {\n"
-//                               "        mat[idx] = mat[idx] + 1;\n"
-//                               "    }\n"
-//                               "}";
     std::string zdrojovy_kod = "__kernel void moje_normalizace(\n"
                                "__global double* mat, __global double* out, const int pocet_prvku) {\n"
                                "    const int idx = get_global_id(0);\n"
+                               "    if (idx < pocet_prvku) {\n"
+                               "        out[idx] = mat[idx] + 1;\n"
+                               "    }\n"
                                "}";
+//    std::string zdrojovy_kod = "__kernel void moje_normalizace(\n"
+//                               "__global double* mat, __global double* out, const int pocet_prvku) {\n"
+//                               "    const int idx = get_global_id(0);\n"
+//                               "}";
     const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
 
     cl_int error = 0;
