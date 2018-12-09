@@ -11,7 +11,7 @@
 int main(int argc, char const *argv[]) {
     size_t pocet_prvku = 1024;
     double* matice = new double[pocet_prvku];
-    std::string zdrojovy_kod = "__kernel void moje_normalizace() {const int idx = get_global_id(0);}";
+    std::string zdrojovy_kod = "__kernel void moje_normalizace(__global double* mat) {const int idx = get_global_id(0);}";
     const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
 
     cl_int error = 0;
