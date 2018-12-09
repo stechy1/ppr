@@ -15,7 +15,8 @@ int main(int argc, char const* argv[]) {
                                "__global double* mat, const int pocet_prvku) {\n"
                                "    const int idx = get_global_id(0);\n"
                                "    if (idx < pocet_prvku) {\n"
-                               "        mat[idx] = mat[idx] + 1;\n"
+                               //"        mat[idx] = mat[idx] + 1;\n"
+                               "        int j = 5;"
                                "    }\n"
                                "}";
     const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
