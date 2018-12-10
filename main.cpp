@@ -53,7 +53,7 @@ int main(int argc, const char *argv[]) {
     std::cout << "Nacitam kernel kod..." << std::endl;
     std::ifstream file("../program.cl", std::ifstream::in);
     std::string zdrojovy_kod((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    std::cout << zdrojovy_kod << std::endl;
+    //std::cout << zdrojovy_kod << std::endl;
 
     cl::Program::Sources source(1,std::make_pair(zdrojovy_kod.c_str(), zdrojovy_kod.length()));
     std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
