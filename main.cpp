@@ -1,169 +1,89 @@
 #define __CL_ENABLE_EXCEPTIONS
 
-#include <CL/opencl.h>
 #include <iostream>
-#include <string>
-#include <cstdio>
-#include <cstdlib>
+#include <cmath>
+#include <vector>
 #include <random>
 #include <fstream>
 
+#include "cl.hpp"
 
-int main(int argc, char const* argv[]) {
-    size_t pocet_prvku = 8;
-    size_t pocet_prvku_vysledne_matice = pocet_prvku;
-    double* matice = new double[pocet_prvku];
-    size_t globalWorkSize = pocet_prvku;
-    size_t localWorkSize = pocet_prvku;
-
-    double res[pocet_prvku_vysledne_matice];
-    res[0] = std::numeric_limits<double>::max(); // min
-    res[1] = std::numeric_limits<double>::lowest(); // max
-
-    std::ifstream file("../program.cl", std::ifstream::in);
-    std::streamsize size = file.tellg();
-    std::string zdrojovy_kod((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    const char* p_zdrojovy_kod = zdrojovy_kod.c_str();
-
-    cl_int error = 0;
-    cl_context context;
-    cl_command_queue queue;
-    cl_device_id device;
-    cl_mem matrix_in, matrix_out;
-    cl_program program;
-    cl_kernel kernel;
-    size_t matrix_size = sizeof(double) * pocet_prvku;
-    size_t result_matrix_size = sizeof(double) * pocet_prvku_vysledne_matice;
-
-    std::cout << "Kernel kod:\n" << zdrojovy_kod << std::endl;
-
+void napln_matici(std::vector<double> &matice, unsigned long velikost) {
     std::mt19937 rng;
     rng.seed(std::random_device()());
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(1, pocet_prvku);
-    std::cout << "Vytvarim matici o velikosti: " << pocet_prvku << " prvku." << std::endl;
-    for (int i = 0; i < pocet_prvku; ++i) {
-        matice[i] = dist6(rng);
-        std::cout << matice[i] << " | ";
-    }
-    std::cout << std::endl;
+    std::uniform_int_distribution<std::mt19937::result_type> dist(1, velikost);
 
-    std::cout << "Hledam dostupna zarizeni..." << std::endl;
-    error = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
-    /* pokud ID nebylo nalezeno nebo nastala jina chyba */
-    if (error != CL_SUCCESS) {
-        std::cout << "Nenalezeno ID zarizeni" << std::endl;
+    std::cout << "Vytvarim matici o velikosti: " << velikost << std::endl;
+    for (auto i = 0; i < velikost; ++i) {
+        auto val = dist(rng);
+        matice.push_back(val);
+        std::cout << val << " | " << std::endl;
+    }
+}
+
+int main(int argc, const char *argv[]) {
+    unsigned long pocet_prvku;
+    std::cout << "Zadejte velikost matice (mocniny čísla 2): ";
+    std::cin >> pocet_prvku;
+    const size_t velikost_matice = sizeof(double) * pocet_prvku;
+
+    std::vector<double> vstupni_matice(pocet_prvku);
+    std::vector<double> vystupni_matice(pocet_prvku);
+
+    napln_matici(vstupni_matice, pocet_prvku);
+
+    std::cout << "Hledam dostupne platformy..." << std::endl;
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+    if (platforms.empty()) {
+        std::cout << "Platform size 0" << std::endl;
         return -1;
     }
-    std::cout << "Vytvarim kontext..." << std::endl;
-    context = clCreateContext(0, 1, &device, NULL, NULL, &error);
-    /* pokud se vytvoreni kontextu nezdarilo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Kontext nevytvoren: " << error << std::endl;
-        goto cleanup_context;
-    }
-    std::cout << "Vytvarim frontu prikazu..." << std::endl;
-    queue = clCreateCommandQueueWithProperties(context, device, 0, &error);
-    /* pokud se vytvoreni fronty nezdarilo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Fronta prikazu nebyla vytvorena: " << error << std::endl;
-        goto cleanup_queue;
-    }
+    std::cout << "Nalezl jsem nejakou platformu." << std::endl;
 
-    std::cout << "Vytvarim prostor pro matici" << std::endl;
-    matrix_in = clCreateBuffer(context, CL_MEM_READ_ONLY, matrix_size, NULL, &error);
-    std::cout << "Predavam obsah matice do read only bufferu" << std::endl;
-    error |= clEnqueueWriteBuffer(queue, matrix_in, CL_TRUE, 0, matrix_size, matice, 0, NULL, NULL);
-    /* pokud se vytvoreni bufferu nepovedlo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Nepodarilo se vytvorit read buffer pro matici" << error << std::endl;
-        goto cleanup_matrix_in;
-    }
+    cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0};
+    const cl::Context context(CL_DEVICE_TYPE_GPU, properties);
+    std::cout << "Mam vytvoreny kontext." << std::endl;
 
-    matrix_out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, result_matrix_size, NULL, &error);
-    std::cout << "Predavam obsah matice do write only bufferu" << std::endl;
-    /* pokud se vytvoreni bufferu nepovedlo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Nepodarilo se vytvorit write buffer pro matici" << error << std::endl;
-        goto cleanup_matrix_out;
-    }
+    std::cout << "Hledam dostupna zarizeni..." << std::endl;
+    const std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+    std::cout << "Nasel jsem celkem: " << devices.size() << " zarizeni." << std::endl;
 
-    std::cout << "Vytvarim program dle zdrojoveho kodu..." << std::endl;
-    program = clCreateProgramWithSource(context, 1, &p_zdrojovy_kod, NULL, &error);
-    /* jestlize nebylo mozne program vytvorit */
-    if (error != CL_SUCCESS) {
-        std::cout << "Program se nepodarilo vytvorit: " << error << std::endl;
-        goto cleanup_matrix_in;
-    }
-    std::cout << "Sestavuji program..." << std::endl;
-    error = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-    /* jestlize nebylo mozne program sestavit */
-    if (error != CL_SUCCESS) {
-        std::cout << "Program se nepodarilo zkompilovat: " << error << std::endl;
-        char compiler_log[4096];
-        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(compiler_log), compiler_log, NULL);
-        std::cout << "OpenCL compiler failed:\n" << compiler_log << std::endl;
-        goto cleanup_matrix_in;
-    }
-    std::cout << "Vytvarim kernel..." << std::endl;
-    kernel = clCreateKernel(program, "moje_hledani_extremu", &error);
-    /* v pripade, ze se vytvoreni kernelu nepovedlo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Kernel se nepodarilo vytvorit: " << error << std::endl;
-        goto cleanup_kernel;
-    }
+    std::cout << "Nacitam kernel kod..." << std::endl;
+    std::ifstream file("../program.cl", std::ifstream::in);
+    const std::string zdrojovy_kod((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::cout << zdrojovy_kod << std::endl;
 
-    std::cout << "Vkladam parametry do kernelu..." << std::endl;
-    error = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*) &matrix_in);
-    error |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*) &matrix_out);
-    error |= clSetKernelArg(kernel, 2, sizeof(int), (void*) &pocet_prvku);
-    error |= clSetKernelArg(kernel, 3, sizeof(double) * pocet_prvku, NULL); // Nejaka prechodova pamet
-    error |= clSetKernelArg(kernel, 4, sizeof(double) * pocet_prvku, NULL); // Nejaka prechodova pamet
-    if (error != CL_SUCCESS) {
-        std::cout << "Parametry nebyly predany " << error << std::endl;
-        goto cleanup_kernel;
-    }
+    const cl::Program::Sources source(1,std::make_pair(zdrojovy_kod.c_str(), zdrojovy_kod.length()));
+    std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
+    const cl::Program program = cl::Program(context, source);
+    program.build(devices);
+    std::cout << "Uspesne jsem sestavil program." << std::endl;
 
-    std::cout << "Spoustim kod na GPU..." << std::endl;
-    error = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalWorkSize, &localWorkSize, 0, NULL, NULL);
-    /* pokud se spusteni neprovedlo */
-    if (error != CL_SUCCESS) {
-        std::cout << "Nepodarilo se spustit vypocet na GPU: " << error << std::endl;
-        goto cleanup_kernel;
-    }
-    /* cekani na vysledek operace */
-    std::cout << "Cekam na dokonceni kodu na GPU..." << std::endl;
-    clFinish(queue);
+    const cl::CommandQueue queue(context, devices[0], 0);
 
-    std::cout << "Ctu vysledek z GPU..." << std::endl;
-    error = clEnqueueReadBuffer(queue, matrix_out, CL_TRUE, 0, result_matrix_size, res, 0, NULL, NULL);
-    /* pokud nebylo mozne vystup precist */
-    if (error != CL_SUCCESS) {
-        std::cout << "Vystup se nezdarilo precist: " << error << std::endl;
-        goto cleanup_kernel;
-    }
+    const cl::Buffer prostor_vstupni_matice(context, CL_MEM_READ_ONLY, velikost_matice);
+    const cl::Buffer prostor_vystupni_matice(context, CL_MEM_WRITE_ONLY, velikost_matice);
 
-    for (int i = 0; i < pocet_prvku_vysledne_matice; ++i) {
-        std::cout << res[i] << " | ";
+    queue.enqueueWriteBuffer(prostor_vstupni_matice, CL_TRUE, 0, velikost_matice, vstupni_matice.data());
+
+    const cl::Kernel kernel(program, "moje_normalinzace");
+    kernel.setArg(0, prostor_vstupni_matice);
+    kernel.setArg(1, prostor_vystupni_matice);
+    kernel.setArg(2, sizeof(unsigned int), (void*) &pocet_prvku);
+    kernel.setArg(3, sizeof(double) * pocet_prvku, nullptr); // Prechodova pamet pro MIN
+    kernel.setArg(4, sizeof(double) * pocet_prvku, nullptr); // Prechodova pamet pro MAX
+
+    queue.enqueueNDRangeKernel(kernel, 1, pocet_prvku, pocet_prvku);
+
+    queue.finish();
+
+    queue.enqueueReadBuffer(prostor_vystupni_matice, CL_TRUE, 0, velikost_matice, vystupni_matice.data());
+
+    std::cout << "Vysledek normalizace:" << std::endl;
+    for (const auto &val : vystupni_matice) {
+        std::cout << val << " | ";
     }
     std::cout << std::endl;
 
-    std::cout << "Vse se uspesne provedlo, jdu vycistit pamet..." << std::endl;
-
-    cleanup_kernel:
-    clReleaseKernel(kernel);
-    /* uvolneni pameti programu */
-    cleanup_program:
-    clReleaseProgram(program);
-    cleanup_matrix_out:
-    clReleaseMemObject(matrix_out);
-    /* uvolneni pameti 1. vstupni matice */
-    cleanup_matrix_in:
-    clReleaseMemObject(matrix_in);
-    /* uvolneni pameti fronty prikazu */
-    cleanup_queue:
-    clReleaseCommandQueue(queue);
-    /* uvolneni pameti OpenCL kontextu */
-    cleanup_context:
-    clReleaseContext(context);
-    delete[] matice;
 }
