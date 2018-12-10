@@ -424,7 +424,7 @@ static inline cl_int errHandler (cl_int err, const char * errStr = NULL)
 #endif // #if defined(CL_VERSION_1_2)
 #define __CREATE_KERNELS_IN_PROGRAM_ERR     __ERR_STR(clCreateKernelsInProgram)
 
-#define __CREATE_COMMAND_QUEUE_ERR          __ERR_STR(clCreateCommandQueue)
+#define __CREATE_COMMAND_QUEUE_ERR          __ERR_STR(clCreateCommandQueueWithProperties)
 #define __SET_COMMAND_QUEUE_PROPERTY_ERR    __ERR_STR(clSetCommandQueueProperty)
 #define __ENQUEUE_READ_BUFFER_ERR           __ERR_STR(clEnqueueReadBuffer)
 #define __ENQUEUE_READ_BUFFER_RECT_ERR      __ERR_STR(clEnqueueReadBufferRect)
@@ -5505,7 +5505,7 @@ private:
     static volatile cl_int default_error_;
 public:
    CommandQueue(
-        cl_command_queue_properties properties,
+        const cl_command_queue_properties properties,
         cl_int* err = NULL)
     {
         cl_int error;
@@ -5521,8 +5521,8 @@ public:
         else {
             Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0];
 
-            object_ = ::clCreateCommandQueue(
-                context(), device(), properties, &error);
+            object_ = ::clCreateCommandQueueWithProperties(
+                context(), device(), &properties, &error);
 
             detail::errHandler(error, __CREATE_COMMAND_QUEUE_ERR);
             if (err != NULL) {
@@ -5535,7 +5535,7 @@ public:
     */
     explicit CommandQueue(
         const Context& context,
-        cl_command_queue_properties properties = 0,
+        const cl_command_queue_properties properties = 0,
         cl_int* err = NULL)
     {
         cl_int error;
@@ -5552,7 +5552,7 @@ public:
             return;
         }
 
-        object_ = ::clCreateCommandQueue(context(), devices[0](), properties, &error);
+        object_ = ::clCreateCommandQueueWithProperties(context(), devices[0](), &properties, &error);
 
         detail::errHandler(error, __CREATE_COMMAND_QUEUE_ERR);
 
@@ -5565,12 +5565,12 @@ public:
     CommandQueue(
         const Context& context,
         const Device& device,
-        cl_command_queue_properties properties = 0,
+        const cl_command_queue_properties properties = 0,
         cl_int* err = NULL)
     {
         cl_int error;
-        object_ = ::clCreateCommandQueue(
-            context(), device(), properties, &error);
+        object_ = ::clCreateCommandQueueWithProperties(
+            context(), device(), &properties, &error);
 
         detail::errHandler(error, __CREATE_COMMAND_QUEUE_ERR);
         if (err != NULL) {
@@ -6361,26 +6361,6 @@ public:
                 (events != NULL && events->size() > 0) ? (cl_event*) &events->front() : NULL,
                 (event != NULL) ? &tmp : NULL),
             __ENQUEUE_NDRANGE_KERNEL_ERR);
-
-        if (event != NULL && err == CL_SUCCESS)
-            *event = tmp;
-
-        return err;
-    }
-
-    cl_int enqueueTask(
-        const Kernel& kernel,
-        const VECTOR_CLASS<Event>* events = NULL,
-        Event* event = NULL) const
-    {
-        cl_event tmp;
-        cl_int err = detail::errHandler(
-            ::clEnqueueTask(
-                object_, kernel(),
-                (events != NULL) ? (cl_uint) events->size() : 0,
-                (events != NULL && events->size() > 0) ? (cl_event*) &events->front() : NULL,
-                (event != NULL) ? &tmp : NULL),
-            __ENQUEUE_TASK_ERR);
 
         if (event != NULL && err == CL_SUCCESS)
             *event = tmp;
