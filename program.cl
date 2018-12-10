@@ -11,7 +11,7 @@ __kernel void moje_hledani_extremu(
     const int workgroupID = globalID / localSize;
 
     res[localID] = reduction_min[localID] =
-    reduction_max[localID] = mat[globalID];
+    reduction_max[localID] = mat[localID];
 
     for (int offset = localSize / 2; offset > 0; offset /= 2) {
         barrier(CLK_LOCAL_MEM_FENCE);

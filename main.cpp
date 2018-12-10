@@ -8,7 +8,7 @@
 
 #include "cl.hpp"
 
-void napln_matici(std::vector<double> &matice, unsigned long velikost) {
+void napln_matici(std::vector<double> &matice, int velikost) {
     std::mt19937 rng;
     rng.seed(std::random_device()());
     std::uniform_int_distribution<std::mt19937::result_type> dist(1, velikost);
@@ -16,14 +16,15 @@ void napln_matici(std::vector<double> &matice, unsigned long velikost) {
     std::cout << "Vytvarim matici o velikosti: " << velikost << std::endl;
     for (auto i = 0; i < velikost; ++i) {
         auto val = dist(rng);
-        matice.push_back(val);
+        //matice.push_back(val);
+        matice[i] = val;
         std::cout << val << " | ";
     }
     std::cout << std::endl;
 }
 
 int main(int argc, const char *argv[]) {
-    unsigned long pocet_prvku;
+    int pocet_prvku;
     std::cout << "Zadejte velikost matice (mocniny čísla 2): ";
     std::cin >> pocet_prvku;
     size_t velikost_matice = sizeof(double) * pocet_prvku;
@@ -72,7 +73,7 @@ int main(int argc, const char *argv[]) {
         cl::Kernel kernel(program, "moje_hledani_extremu");
         kernel.setArg(0, prostor_vstupni_matice);
         kernel.setArg(1, prostor_vystupni_matice);
-        kernel.setArg(2, sizeof(unsigned int), (void *) &pocet_prvku);
+        kernel.setArg(2, sizeof(int), (void *) &pocet_prvku);
         kernel.setArg(3, sizeof(double) * pocet_prvku, nullptr); // Prechodova pamet pro MIN
         kernel.setArg(4, sizeof(double) * pocet_prvku, nullptr); // Prechodova pamet pro MAX
 
