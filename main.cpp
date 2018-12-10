@@ -17,15 +17,16 @@ void napln_matici(std::vector<double> &matice, unsigned long velikost) {
     for (auto i = 0; i < velikost; ++i) {
         auto val = dist(rng);
         matice.push_back(val);
-        std::cout << val << " | " << std::endl;
+        std::cout << val << " | ";
     }
+    std::cout << std::endl;
 }
 
 int main(int argc, const char *argv[]) {
     unsigned long pocet_prvku;
     std::cout << "Zadejte velikost matice (mocniny čísla 2): ";
     std::cin >> pocet_prvku;
-    const size_t velikost_matice = sizeof(double) * pocet_prvku;
+    size_t velikost_matice = sizeof(double) * pocet_prvku;
 
     std::vector<double> vstupni_matice(pocet_prvku);
     std::vector<double> vystupni_matice(pocet_prvku);
@@ -42,32 +43,32 @@ int main(int argc, const char *argv[]) {
     std::cout << "Nalezl jsem nejakou platformu." << std::endl;
 
     cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0};
-    const cl::Context context(CL_DEVICE_TYPE_GPU, properties);
+    cl::Context context(CL_DEVICE_TYPE_GPU, properties);
     std::cout << "Mam vytvoreny kontext." << std::endl;
 
     std::cout << "Hledam dostupna zarizeni..." << std::endl;
-    const std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
+    std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
     std::cout << "Nasel jsem celkem: " << devices.size() << " zarizeni." << std::endl;
 
     std::cout << "Nacitam kernel kod..." << std::endl;
     std::ifstream file("../program.cl", std::ifstream::in);
-    const std::string zdrojovy_kod((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string zdrojovy_kod((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     std::cout << zdrojovy_kod << std::endl;
 
-    const cl::Program::Sources source(1,std::make_pair(zdrojovy_kod.c_str(), zdrojovy_kod.length()));
+    cl::Program::Sources source(1,std::make_pair(zdrojovy_kod.c_str(), zdrojovy_kod.length()));
     std::cout << "Nadefinoval jsem zdrojovy kod." << std::endl;
-    const cl::Program program = cl::Program(context, source);
+    cl::Program program = cl::Program(context, source);
     program.build(devices);
     std::cout << "Uspesne jsem sestavil program." << std::endl;
 
-    const cl::CommandQueue queue(context, devices[0], 0);
+    cl::CommandQueue queue(context, devices[0], 0);
 
-    const cl::Buffer prostor_vstupni_matice(context, CL_MEM_READ_ONLY, velikost_matice);
-    const cl::Buffer prostor_vystupni_matice(context, CL_MEM_WRITE_ONLY, velikost_matice);
+    cl::Buffer prostor_vstupni_matice(context, CL_MEM_READ_ONLY, velikost_matice);
+    cl::Buffer prostor_vystupni_matice(context, CL_MEM_WRITE_ONLY, velikost_matice);
 
     queue.enqueueWriteBuffer(prostor_vstupni_matice, CL_TRUE, 0, velikost_matice, vstupni_matice.data());
 
-    const cl::Kernel kernel(program, "moje_normalinzace");
+    cl::Kernel kernel(program, "moje_hledani_extremu");
     kernel.setArg(0, prostor_vstupni_matice);
     kernel.setArg(1, prostor_vystupni_matice);
     kernel.setArg(2, sizeof(unsigned int), (void*) &pocet_prvku);
